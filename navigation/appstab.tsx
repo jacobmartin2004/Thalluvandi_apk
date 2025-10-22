@@ -20,9 +20,8 @@ const Tab = createBottomTabNavigator();
 const AppTabs: React.FC = () => {
   return (
     <>
-      <StatusBar backgroundColor={Colors.yellow} barStyle="dark-content" />
 
-     <Navbar />
+     {/* <Navbar /> */}
     <Tab.Navigator
       screenOptions={({ route }) => ({
         headerShown: false,

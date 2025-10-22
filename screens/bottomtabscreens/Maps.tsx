@@ -1,15 +1,11 @@
 import { StyleSheet, Text, View } from 'react-native'
 import React from 'react'
 import Navbar from '../../component/navbar'
+import MainPage from '../homescreen/mainpage'
 
 const Maps = () => {
   return (
-    <>
-        
-    <View>
-      <Text>Maps</Text>
-    </View>
-    </>
+    <MainPage />
   )
 }
 

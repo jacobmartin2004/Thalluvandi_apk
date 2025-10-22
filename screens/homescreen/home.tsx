@@ -9,7 +9,7 @@ import Colors from '../../theme/colorpallete';
 const Home: React.FC = () => {
   return (
     <>
-
+    
       <SearchBar placeholder="Search vendors, items..." bgcolor="#fff" />
       <MainPage />
     </>
