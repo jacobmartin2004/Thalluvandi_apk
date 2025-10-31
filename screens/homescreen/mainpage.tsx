@@ -1,12 +1,25 @@
 // MainPage.tsx
-import React, { useEffect, useMemo } from 'react';
-import { ActivityIndicator, StyleSheet, View, Text } from 'react-native';
+import React, { Dispatch, SetStateAction, useEffect, useMemo } from 'react';
+import {
+  ActivityIndicator,
+  StyleSheet,
+  View,
+  Text,
+  TouchableOpacity,
+} from 'react-native';
 import {
   MapView,
   Camera,
   PointAnnotation,
+  ShapeSource,
+  FillLayer,
+  LineLayer,
 } from '@maplibre/maplibre-react-native';
 import { useCurrentLocation } from '../../component/locationtaker';
+import AntDesign from 'react-native-vector-icons/AntDesign';
+import { Floatingbuttonaction } from '../../utils/mappagefunctions/floating';
+import Modal from 'react-native-modal';
+import Modalcontent from '../../utils/mappagefunctions/modalcontent';
 
 type Pin = {
   id: string;
@@ -17,27 +30,72 @@ type Pin = {
 
 export default function MainPage() {
   const { location, loading, error } = useCurrentLocation();
-
+  const [ismodal, setismodalok] = React.useState(false);
   useEffect(() => {
     if (location) {
       console.log('Current location:', location.latitude, location.longitude);
     }
   }, [location]);
+  const youCircle = useMemo(() => {
+    if (!location) return null;
+    // circlePolygon expects [lon, lat]
+    return circlePolygon([location.longitude, location.latitude], 3000);
+  }, [location]);
+  function circlePolygon(
+    [lon, lat]: [number, number],
+    radiusM = 5000,
+    steps = 128,
+  ) {
+    const R = 6371000; // Earth radius (m)
+    const toRad = (d: number) => (d * Math.PI) / 180;
+    const toDeg = (r: number) => (r * 180) / Math.PI;
 
-  // ====== Manually define OTHER locations here ======
+    const lat1 = toRad(lat);
+    const lon1 = toRad(lon);
+    const angDist = radiusM / R;
+
+    const coords: [number, number][] = [];
+    for (let i = 0; i <= steps; i++) {
+      const brng = toRad((i / steps) * 360);
+      const sinLat2 =
+        Math.sin(lat1) * Math.cos(angDist) +
+        Math.cos(lat1) * Math.sin(angDist) * Math.cos(brng);
+      const lat2 = Math.asin(sinLat2);
+      const y = Math.sin(brng) * Math.sin(angDist) * Math.cos(lat1);
+      const x = Math.cos(angDist) - Math.sin(lat1) * sinLat2;
+      const lon2 = lon1 + Math.atan2(y, x);
+      coords.push([((toDeg(lon2) + 540) % 360) - 180, toDeg(lat2)]); // normalize lon to [-180,180]
+    }
+
+    return {
+      type: 'Polygon' as const,
+      coordinates: [coords],
+    };
+  }
   const manualPins: Pin[] = useMemo(
     () => [
-      { id: 'site-a', title: 'Site A', latitude: 10.85447, longitude: 78.60196 },
-      { id: 'site-b', title: 'Site B', latitude: 10.86012, longitude: 78.61033 },
-      { id: 'site-c', title: 'Site C', latitude: 10.8482,  longitude: 78.5951  },
-      { id: 'site-d', title: 'Site D', latitude: 10.8519,  longitude: 78.6067  },
+      {
+        id: 'site-a',
+        title: 'Site A',
+        latitude: 10.85447,
+        longitude: 78.60196,
+      },
+      {
+        id: 'site-b',
+        title: 'Site B',
+        latitude: 10.86012,
+        longitude: 78.61033,
+      },
+      { id: 'site-c', title: 'Site C', latitude: 10.8482, longitude: 78.5951 },
+      { id: 'site-d', title: 'Site D', latitude: 10.8519, longitude: 78.6067 },
     ],
-    []
+    [],
   );
-
-  // Camera center: prefer user location, fallback to first manual pin
+  const onClose = () => {
+    setismodalok(false);
+  };
   const cameraCenter: [number, number] = useMemo(() => {
-    if (location) return [location.longitude, location.latitude]; // [lng, lat]
+    if (location) return [location.longitude, location.latitude];
     return [manualPins[0].longitude, manualPins[0].latitude];
   }, [location, manualPins]);
 
@@ -56,14 +114,12 @@ export default function MainPage() {
       >
         <Camera centerCoordinate={cameraCenter} zoomLevel={13} pitch={30} />
 
-        {/* ========= MAIN (GPS) LOCATION — distinct look ========= */}
-        {location && (
+        {location && youCircle && (
           <PointAnnotation
             id="you"
             coordinate={[location.longitude, location.latitude]}
             title="You"
           >
-            {/* IMPORTANT: PointAnnotation must have exactly ONE child */}
             <View style={styles.annotationRoot} pointerEvents="none">
               <View style={styles.youPin}>
                 <View style={styles.youRing} />
@@ -75,13 +131,35 @@ export default function MainPage() {
             </View>
           </PointAnnotation>
         )}
-
-        {/* ========= OTHER (MANUAL) LOCATIONS ========= */}
-        {manualPins.map((pin) => (
+        <ShapeSource
+          id="you-radius-src"
+          shape={{
+            type: 'Feature',
+            geometry: youCircle || { type: 'Polygon', coordinates: [] },
+            properties: {},
+          }}
+        >
+          <FillLayer
+            id="you-radius-fill"
+            style={{
+              fillColor: 'rgba(255, 255, 255, 0.18)',
+              fillAntialias: true,
+              fillOutlineColor: 'rgba(255, 255, 255, 0.7)',
+            }}
+          />
+          <LineLayer
+            id="you-radius-outline"
+            style={{
+              lineColor: 'rgba(0,122,255,0.9)',
+              lineWidth: 2,
+            }}
+          />
+        </ShapeSource>
+        {manualPins.map(pin => (
           <PointAnnotation
             key={pin.id}
             id={pin.id}
-            coordinate={[pin.longitude, pin.latitude]} // MapLibre expects [lng, lat]
+            coordinate={[pin.longitude, pin.latitude]}
             title={pin.title || ''}
           >
             <View style={styles.annotationRoot} pointerEvents="none">
@@ -113,6 +191,21 @@ export default function MainPage() {
           <Text style={styles.errorText}>Location error: {String(error)}</Text>
         </View>
       )}
+      <Floatingbuttonaction ismodal={setismodalok} />
+
+      <Modal
+        isVisible={ismodal}
+        onBackdropPress={onClose}
+        style={styles.modal}
+        swipeDirection="down"
+        onSwipeComplete={onClose}
+        propagateSwipe
+      >
+        <Modalcontent />
+        <TouchableOpacity style={styles.cancelButton} onPress={onClose}>
+          <Text style={styles.cancelText}>Cancel</Text>
+        </TouchableOpacity>
+      </Modal>
     </View>
   );
 }
@@ -154,7 +247,21 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: 'white',
   },
-
+  //modal styles
+  modal: {
+    justifyContent: 'flex-end',
+    margin: 0,
+  },
+  cancelButton: {
+    backgroundColor: '#eee',
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  cancelText: {
+    color: '#333',
+    fontWeight: '600',
+  },
   // ======= Other pins (red) =======
   pin: {
     width: 28,
@@ -194,8 +301,8 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(0,0,0,0.15)',
     alignItems: 'center',
     justifyContent: 'center',
-    zIndex: 10,     // iOS layering
-    elevation: 3,   // Android layering
+    zIndex: 10, // iOS layering
+    elevation: 3, // Android layering
   },
   calloutText: {
     fontSize: 11,

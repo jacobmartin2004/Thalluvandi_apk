@@ -14,7 +14,7 @@ import LottieView from 'lottie-react-native';
 import Colors from '../../theme/colorpallete';
 import caranime from '../../assests/anime/Loading 49 _ Car Types.json';
 
-import auth from '@react-native-firebase/auth';
+import auth, { FirebaseAuthTypes } from '@react-native-firebase/auth';
 import {
   GoogleSignin,
   type SignInResponse,
@@ -30,7 +30,22 @@ const Login: React.FC = () => {
   const [loading, setloading] = useState(false);
   const [email, setemail] = useState('');
   const [password, setpassword] = useState('');
+  const [initialuser, setinitaluser] = React.useState(null);
+  const [user, setuser] = useState<FirebaseAuthTypes.User | null>(null);
 
+  useEffect(() => {
+    const unsubscribe = auth().onAuthStateChanged(u => {
+      if (u) {
+        setuser(u);
+        console.log('user present or not', u);
+        navigation.replace('Main');
+      } else {
+        setuser(null);
+      }
+    });
+
+    return unsubscribe;
+  }, []);
   // Configure Google Sign-In once
 
   async function handleLogin() {
@@ -67,14 +82,20 @@ const Login: React.FC = () => {
       source={require('../../assests/images/bglogin.png')}
       style={styles.container}
     >
-      <View style={styles.centerboxbg}>
+      <View
+        style={
+          loading
+            ? [styles.centerbox, { borderRadius: 0 }]
+            : [styles.centerboxbg]
+        }
+      >
         <View style={styles.centerbox}>
           {loading ? (
             <LottieView
               source={caranime}
               autoPlay
               loop
-              style={{ width: '90%', height: '50%' }}
+              style={{ width: '100%', height: '100%' }}
             />
           ) : (
             <>

@@ -132,6 +132,7 @@ const Register: React.FC = () => {
                 ) : null}
                 <TextInput
                   placeholder="Email"
+                  keyboardType="url"
                   style={[
                     styles.textstyleinput,
                     isfocusin1
@@ -145,6 +146,7 @@ const Register: React.FC = () => {
                 {isenable ? (
                   <TextInput
                     placeholder="Phone No"
+                    keyboardType='numeric'
                     style={[
                       styles.textstyleinput,
                       isfocusin3

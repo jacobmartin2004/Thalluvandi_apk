@@ -13,21 +13,24 @@ import { StatusBar } from 'react-native';
 
 const Stack = createStackNavigator();
 
-const ReactNavigate: React.FC = () => (
+const ReactNavigate: React.FC = () => {
+  
+ return (
+
   <>
     <NavigationContainer>
       <Stack.Navigator
-        initialRouteName="Login"
+        initialRouteName="Initalpage"
         screenOptions={{ headerShown: false }}
       >
         <Stack.Screen name="OnboardingGate" component={OnboardingGate} />
         <Stack.Screen name="Login" component={Login} />
         <Stack.Screen name="Register" component={Register} />
-        {/* <Stack.Screen name="Initalpage" component={Initalpage} /> */}
+        <Stack.Screen name="Initalpage" component={Initalpage as React.FC} />
         <Stack.Screen name="Main" component={AppTabs} />
       </Stack.Navigator>
     </NavigationContainer>
   </>
 );
-
+}
 export default ReactNavigate;
