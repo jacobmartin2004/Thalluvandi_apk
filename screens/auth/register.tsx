@@ -62,24 +62,22 @@ const Register: React.FC = () => {
         password,
       );
 
-      const user = userCredential.user;
-
-      try {
-        await firestore().collection('users').doc(user.uid).set({
-          email: user.email,
-          seller: true,
-          phoneno,
-          shopname,
-          ownername: sellername,
-          createdAt: firestore.FieldValue.serverTimestamp(),
-        });
-      } catch (firestoreError) {
-        console.log('isenable:', isenable);
-        console.error('Firestore write error:', firestoreError);
-      }
+      // try {
+      //   await firestore().collection('users').doc(user.uid).set({
+      //     email: user.email,
+      //     seller: shopname ? true : false,
+      //     phoneno,
+      //     shopname,
+      //     ownername: sellername,
+      //     createdAt: firestore.FieldValue.serverTimestamp(),
+      //   });
+      // } catch (firestoreError) {
+      //   console.log('isenable:', isenable);
+      //   console.error('Firestore write error:', firestoreError);
+      // }
 
       Alert.alert('User account created & signed in!');
-      navigate.navigate("Main" as never);
+      navigate.navigate('Main' as never);
     } catch (error: any) {
       Alert.alert(
         'Signup Failed',
@@ -146,7 +144,7 @@ const Register: React.FC = () => {
                 {isenable ? (
                   <TextInput
                     placeholder="Phone No"
-                    keyboardType='numeric'
+                    keyboardType="numeric"
                     style={[
                       styles.textstyleinput,
                       isfocusin3
@@ -198,7 +196,7 @@ const Register: React.FC = () => {
                   onBlur={() => setisfocusin2(false)}
                   onChangeText={text => setconpassword(text)}
                 />
-                <View style={{ flexDirection: 'row' }}>
+                {/* <View style={{ flexDirection: 'row' }}>
                   <Text style={{ fontWeight: 'bold', marginRight: 10 }}>
                     Are you a seller
                   </Text>
@@ -208,7 +206,7 @@ const Register: React.FC = () => {
                     trackColor={{ false: '#767577', true: '#81b0ff' }}
                     thumbColor={isenable ? Colors.yellow : '#f4f3f4'}
                   />
-                </View>
+                </View> */}
 
                 <View
                   style={[

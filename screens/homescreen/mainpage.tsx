@@ -20,6 +20,7 @@ import AntDesign from 'react-native-vector-icons/AntDesign';
 import { Floatingbuttonaction } from '../../utils/mappagefunctions/floating';
 import Modal from 'react-native-modal';
 import Modalcontent from '../../utils/mappagefunctions/modalcontent';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 type Pin = {
   id: string;
@@ -29,13 +30,32 @@ type Pin = {
 };
 
 export default function MainPage() {
+  const [sellerstatus, setsellerstatus] = React.useState<boolean | null>(null);
   const { location, loading, error } = useCurrentLocation();
+
   const [ismodal, setismodalok] = React.useState(false);
   useEffect(() => {
     if (location) {
       console.log('Current location:', location.latitude, location.longitude);
     }
   }, [location]);
+  const sellerstatusget = async () => {
+    try {
+      const status = await AsyncStorage.getItem('sellerstatus');
+      if (status !== null) {
+        setsellerstatus(JSON.parse(status));
+        console.log('Seller status retrieved:', JSON.parse(status));
+      } else {
+        console.log('No seller status found in storage.');
+      }
+    } catch (error) {
+      console.error('Error retrieving seller status:', error);
+    }
+  };
+
+  useEffect(() => {
+    sellerstatusget();
+  }, []);
   const youCircle = useMemo(() => {
     if (!location) return null;
     // circlePolygon expects [lon, lat]
@@ -76,24 +96,25 @@ export default function MainPage() {
     () => [
       {
         id: 'site-a',
-        title: 'Site A',
+        title: 'Apple vandi',
         latitude: 10.85447,
         longitude: 78.60196,
       },
       {
         id: 'site-b',
-        title: 'Site B',
+        title: 'Jacob store',
         latitude: 10.86012,
         longitude: 78.61033,
       },
-      { id: 'site-c', title: 'Site C', latitude: 10.8482, longitude: 78.5951 },
-      { id: 'site-d', title: 'Site D', latitude: 10.8519, longitude: 78.6067 },
+      { id: 'site-c', title: 'Poo kadai', latitude: 10.8482, longitude: 78.5951 },
+      { id: 'site-d', title: 'Potti kadai', latitude: 10.8519, longitude: 78.6067 },
     ],
     [],
   );
   const onClose = () => {
     setismodalok(false);
   };
+
   const cameraCenter: [number, number] = useMemo(() => {
     if (location) return [location.longitude, location.latitude];
     return [manualPins[0].longitude, manualPins[0].latitude];
@@ -126,7 +147,7 @@ export default function MainPage() {
                 <View style={styles.youDot} />
               </View>
               <View style={styles.calloutBox}>
-                <Text style={styles.calloutText}>You</Text>
+                <Text style={styles.calloutText}>{sellerstatus === true ? "Your shop" : "You"}</Text>
               </View>
             </View>
           </PointAnnotation>
@@ -191,21 +212,24 @@ export default function MainPage() {
           <Text style={styles.errorText}>Location error: {String(error)}</Text>
         </View>
       )}
-      <Floatingbuttonaction ismodal={setismodalok} />
-
-      <Modal
-        isVisible={ismodal}
-        onBackdropPress={onClose}
-        style={styles.modal}
-        swipeDirection="down"
-        onSwipeComplete={onClose}
-        propagateSwipe
-      >
-        <Modalcontent />
-        <TouchableOpacity style={styles.cancelButton} onPress={onClose}>
-          <Text style={styles.cancelText}>Cancel</Text>
-        </TouchableOpacity>
-      </Modal>
+      {sellerstatus === true && (
+        <>
+          <Floatingbuttonaction ismodal={setismodalok} />
+          <Modal
+            isVisible={ismodal}
+            onBackdropPress={onClose}
+            style={styles.modal}
+            swipeDirection="down"
+            onSwipeComplete={onClose}
+            propagateSwipe
+          >
+            <Modalcontent />
+            <TouchableOpacity style={styles.cancelButton} onPress={onClose}>
+              <Text style={styles.cancelText}>Cancel</Text>
+            </TouchableOpacity>
+          </Modal>
+        </>
+      )}
     </View>
   );
 }
@@ -305,7 +329,7 @@ const styles = StyleSheet.create({
     elevation: 3, // Android layering
   },
   calloutText: {
-    fontSize: 11,
+    fontSize: 8,
     fontWeight: '600',
   },
   calloutSpacer: {

@@ -10,27 +10,33 @@ import OnboardingGate from '../screens/explanationcontent/onboardingappstart';
 import AppTabs from './appstab'; // <— the tab navigator
 import Colors from '../theme/colorpallete';
 import { StatusBar } from 'react-native';
+import Addshop from '../screens/justasellerthing/addshop';
+import Openshop from '../screens/justasellerthing/openshop';
+import Addproducts from '../screens/justasellerthing/addproducts';
+import Relocate from '../screens/justasellerthing/relocate';
 
 const Stack = createStackNavigator();
 
 const ReactNavigate: React.FC = () => {
-  
- return (
-
-  <>
-    <NavigationContainer>
-      <Stack.Navigator
-        initialRouteName="Initalpage"
-        screenOptions={{ headerShown: false }}
-      >
-        <Stack.Screen name="OnboardingGate" component={OnboardingGate} />
-        <Stack.Screen name="Login" component={Login} />
-        <Stack.Screen name="Register" component={Register} />
-        <Stack.Screen name="Initalpage" component={Initalpage as React.FC} />
-        <Stack.Screen name="Main" component={AppTabs} />
-      </Stack.Navigator>
-    </NavigationContainer>
-  </>
-);
-}
+  return (
+    <>
+      <NavigationContainer>
+        <Stack.Navigator
+          initialRouteName="Initalpage"
+          screenOptions={{ headerShown: false }}
+        >
+          <Stack.Screen name="OnboardingGate" component={OnboardingGate} />
+          <Stack.Screen name="Login" component={Login} />
+          <Stack.Screen name="Register" component={Register} />
+          <Stack.Screen name="Initalpage" component={Initalpage as React.FC} />
+          <Stack.Screen name="Main" component={AppTabs} />
+          <Stack.Screen name="Addshop" component={Addshop} />
+          <Stack.Screen name="Openshop" component={Openshop} />
+          <Stack.Screen name="Addproducts" component={Addproducts} />
+          <Stack.Screen name="Relocate" component={Relocate} />
+        </Stack.Navigator>
+      </NavigationContainer>
+    </>
+  );
+};
 export default ReactNavigate;

@@ -10,10 +10,16 @@ import {
 } from 'react-native';
 import auth from '@react-native-firebase/auth';
 import firestore from '@react-native-firebase/firestore';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useNavigation } from '@react-navigation/native';
 
 type FeatureDoc = {
   imageurl1?: string;
   imageurl2?: string;
+  openshop?: string;
+  addproduct?: string;
+  relocate?: string;
+  headingname?: string;
 };
 
 const DOC_PATH = { collection: 'dataandlink', doc: '6GdNE82YbCHYrABbHg61' };
@@ -22,7 +28,8 @@ const Modalcontent = () => {
   const [data, setData] = useState<FeatureDoc | null>(null);
   const [loading, setLoading] = useState(true);
   const [errMsg, setErrMsg] = useState<string | null>(null);
-
+  const usenavigation = useNavigation();
+  const sellerstatus = AsyncStorage.getItem('sellerstatus');
   const fetchData = useCallback(async () => {
     const user = auth().currentUser;
     if (!user) {
@@ -61,9 +68,15 @@ const Modalcontent = () => {
     fetchData();
   }, [fetchData]);
 
+  function sellerthingnavigation (locations:string) {
+    console.log(locations);
+    
+    usenavigation.navigate(locations as never);
+  }
+
   return (
     <View style={styles.content}>
-      <Text style={styles.title}>Features</Text>
+      <Text style={styles.title}>{data?.headingname}</Text>
 
       {loading ? (
         <ActivityIndicator size="large" />
@@ -75,30 +88,54 @@ const Modalcontent = () => {
           </TouchableOpacity>
         </View>
       ) : (
-        <View style={{ flexDirection: 'row', gap: 30 }}>
+        <View style={{ flexDirection: 'row', gap: 30 , flexWrap: 'wrap', justifyContent: 'space-around'}}>
           {/* Image 1 */}
           {data?.imageurl1 ? (
-            <TouchableOpacity activeOpacity={0.8}>
+            <TouchableOpacity activeOpacity={0.8} onPress={() => sellerthingnavigation('Addshop')}>
               <Image
                 source={{ uri: data.imageurl1 }}
                 style={styles.featureImage}
                 resizeMode="cover"
               />
-              <Text style={styles.description}>Shop</Text>
+              <Text style={styles.description}>Add Shop</Text>
             </TouchableOpacity>
           ) : (
             <Text>No Image 1 Found</Text>
           )}
-
-          {/* Image 2 */}
-          {data?.imageurl2 ? (
-            <TouchableOpacity activeOpacity={0.8}>
+           {data?.imageurl2 ? (
+            <TouchableOpacity activeOpacity={0.8} onPress={() => sellerthingnavigation('Addproducts')}>
               <Image
-                source={{ uri: data.imageurl2 }}
+                source={{ uri: data.addproduct }}
                 style={styles.featureImage}
                 resizeMode="cover"
               />
-              <Text style={styles.description}>Customers</Text>
+              <Text style={styles.description}>Add Products</Text>
+            </TouchableOpacity>
+          ) : (
+            <Text>No Image 2 Found</Text>
+          )}
+             {data?.imageurl1 ? (
+            <TouchableOpacity activeOpacity={0.8} onPress={() => sellerthingnavigation('Openshop')}>
+              <Image
+                source={{ uri: data.openshop }}
+                style={styles.featureImage}
+                resizeMode="cover"
+              />
+              <Text style={styles.description}>Open Shop</Text>
+            </TouchableOpacity>
+          ) : (
+            <Text>No Image 1 Found</Text>
+          )}
+          {/* Image 2 */}
+         
+              {data?.imageurl2 ? (
+            <TouchableOpacity activeOpacity={0.8} onPress={() => sellerthingnavigation('Relocate')}>
+              <Image
+                source={{ uri: data.relocate }}
+                style={styles.featureImage}
+                resizeMode="cover"
+              />
+              <Text style={styles.description}>Relocate</Text>
             </TouchableOpacity>
           ) : (
             <Text>No Image 2 Found</Text>

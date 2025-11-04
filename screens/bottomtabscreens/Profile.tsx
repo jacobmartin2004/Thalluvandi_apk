@@ -14,6 +14,7 @@ import Colors from '../../theme/colorpallete';
 import firestore from '@react-native-firebase/firestore';
 import auth from '@react-native-firebase/auth';
 import { sendResetEmail } from '../../utils/profilepagefunctions/changepassword';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface Userdatamain {
   name: string | null;
@@ -35,7 +36,13 @@ const Profile = () => {
   const navigation = useNavigation();
 
   const logout = () => {
-    navigation.navigate('Login' as never);
+    auth()
+      .signOut()
+      .then(() => {
+        Alert.alert('Logged out successfully');
+        navigation.navigate('Login' as never);
+      })
+      .catch(error => Alert.alert('Error logging out', error.message));
   };
   useEffect(() => {
     const auth = getAuth();
@@ -58,36 +65,43 @@ const Profile = () => {
     // Cleanup the listener on unmount
     return () => unsubscribe();
   }, []);
-  async function fetchmyprofile() {
-    const user = auth().currentUser;
-    if (!user) return Alert.alert('No user is logged in');
+  // async function fetchmyprofile() {
+  //   const user = auth().currentUser;
+  //   if (!user) return Alert.alert('No user is logged in');
 
-    try {
-      const userdata = await firestore()
-        .collection('users')
-        .doc(user.uid)
-        .get();
-      if (userdata) {
-        const userDataObj = userdata.data();
+  //   try {
+  //     const userdata = await firestore()
+  //       .collection('users')
+  //       .doc(user.uid)
+  //       .get();
+  //     if (userdata) {
+  //       const userDataObj = userdata.data();
 
-        console.log('profile data', userDataObj);
-        let data = {
-          email: userDataObj?.email,
-          ownername: userDataObj?.ownername,
-          phoneno: userDataObj?.phoneno,
-          shopname: userDataObj?.shopname,
-          seller: userDataObj?.seller,
-        };
-        setuserdataprofile(data);
-      } else {
-        console.log('No user data found in Firestore');
-      }
-    } catch (error) {
-      console.error('Error fetching user data:', error);
-    }
-  }
+  //       console.log('profile data', userDataObj);
+  //       let data = {
+  //         email: userDataObj?.email,
+  //         ownername: userDataObj?.ownername,
+  //         phoneno: userDataObj?.phoneno,
+  //         shopname: userDataObj?.shopname,
+  //         seller: userDataObj?.seller,
+  //        };
+  //       setuserdataprofile(data);
+  //       if (userDataObj?.seller !== undefined) {
+  //         AsyncStorage.setItem(
+  //           'sellerstatus',
+  //           JSON.stringify(userDataObj?.seller),
+  //         );
+  //       }
+  //     } else {
+  //       console.log('No user data found in Firestore');
+  //     }
+  //   } catch (error) {
+  //     console.error('Error fetching user data:', error);
+  //   }
+  // }
   useEffect(() => {
-    fetchmyprofile();
+    // fetchmyprofile();
+    console.log(userdataprofile);
   }, []);
   const changepassword = async () => {
     await sendResetEmail(userdata?.email || '');
@@ -148,7 +162,7 @@ const Profile = () => {
         )}
       </View>
       <View style={styles.divider}></View>
-      {userdataprofile?.seller === true && (
+      {/* {userdataprofile?.seller !== undefined && (
         <>
           <View style={styles.profilepage}>
             <Text style={styles.header}>Seller Details</Text>
@@ -177,7 +191,7 @@ const Profile = () => {
           </View>
           <View style={styles.divider}></View>
         </>
-      )}
+      )} */}
 
       <View style={styles.profilepage1}>
         <Text style={styles.header}>Other Options</Text>
