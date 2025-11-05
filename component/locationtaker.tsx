@@ -1,22 +1,14 @@
-import { useEffect, useState, useRef } from 'react';
+// useCurrentLocation.ts
+import { useEffect, useRef, useState } from 'react';
 import { PermissionsAndroid, Platform } from 'react-native';
-import Geolocation, { GeoPosition, GeoError } from 'react-native-geolocation-service';
+import Geolocation, { GeoError, GeoPosition } from 'react-native-geolocation-service';
 
 type Location = { latitude: number; longitude: number } | null;
-
-type Result = {
-  location: Location | null;
-  loading: boolean;
-  error: string | null;
-};
+type Result = { location: Location; loading: boolean; error: string | null };
 
 async function requestAndroidPermission(): Promise<boolean> {
-  const hasFine = await PermissionsAndroid.check(
-    PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION
-  );
-  const hasCoarse = await PermissionsAndroid.check(
-    PermissionsAndroid.PERMISSIONS.ACCESS_COARSE_LOCATION
-  );
+  const hasFine = await PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION);
+  const hasCoarse = await PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.ACCESS_COARSE_LOCATION);
   if (hasFine || hasCoarse) return true;
 
   const res = await PermissionsAndroid.requestMultiple([
@@ -24,11 +16,8 @@ async function requestAndroidPermission(): Promise<boolean> {
     PermissionsAndroid.PERMISSIONS.ACCESS_COARSE_LOCATION,
   ]);
 
-  const grantedFine =
-    res[PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION] === PermissionsAndroid.RESULTS.GRANTED;
-  const grantedCoarse =
-    res[PermissionsAndroid.PERMISSIONS.ACCESS_COARSE_LOCATION] === PermissionsAndroid.RESULTS.GRANTED;
-
+  const grantedFine = res[PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION] === PermissionsAndroid.RESULTS.GRANTED;
+  const grantedCoarse = res[PermissionsAndroid.PERMISSIONS.ACCESS_COARSE_LOCATION] === PermissionsAndroid.RESULTS.GRANTED;
   return grantedFine || grantedCoarse;
 }
 
@@ -41,6 +30,7 @@ export function useCurrentLocation(): Result {
   useEffect(() => {
     (async () => {
       try {
+        // Permissions
         if (Platform.OS === 'ios') {
           const auth = await Geolocation.requestAuthorization('whenInUse');
           if (auth !== 'granted') throw new Error(`iOS location permission: ${auth}`);
@@ -49,23 +39,43 @@ export function useCurrentLocation(): Result {
           if (!ok) throw new Error('Android location permission denied');
         }
 
-        // 🔁 Start watching position updates
+        // 1) Get an initial fix (don’t wait for movement)
+        await new Promise<void>((resolve) => {
+          Geolocation.getCurrentPosition(
+            (pos: GeoPosition) => {
+              setLocation({ latitude: pos.coords.latitude, longitude: pos.coords.longitude });
+              setLoading(false);
+              resolve();
+            },
+            (err: GeoError) => {
+              setError(`${err.code}: ${err.message}`);
+              setLoading(false);
+              resolve(); // still proceed to watch, sometimes getCurrentPosition times out
+            },
+            {
+              enableHighAccuracy: true,
+              timeout: 10000,
+              maximumAge: 0,
+              forceRequestLocation: true, // Android: try to force a fresh fix
+              showLocationDialog: true,
+            }
+          );
+        });
+
+        // 2) Start watching updates
         watchId.current = Geolocation.watchPosition(
           (pos: GeoPosition) => {
-            const { latitude, longitude } = pos.coords;
-            setLocation({ latitude, longitude });
-            setLoading(false);
+            setLocation({ latitude: pos.coords.latitude, longitude: pos.coords.longitude });
           },
           (err: GeoError) => {
             setError(`${err.code}: ${err.message}`);
-            setLoading(false);
           },
           {
             enableHighAccuracy: true,
-            distanceFilter: 5, // meters before callback fires (tweak as needed)
-            interval: 5000, // ms between updates on Android
-            fastestInterval: 2000,
-            showLocationDialog: true,
+            distanceFilter: 5,      // meters before callback fires
+            interval: 5000,         // Android: ms between updates
+            fastestInterval: 2000,  // Android
+            showsBackgroundLocationIndicator: false,
           }
         );
       } catch (e: any) {
@@ -74,12 +84,12 @@ export function useCurrentLocation(): Result {
       }
     })();
 
-    // Cleanup watcher on unmount
     return () => {
       if (watchId.current !== null) {
         Geolocation.clearWatch(watchId.current);
         watchId.current = null;
       }
+      Geolocation.stopObserving(); // extra cleanup for Android
     };
   }, []);
 

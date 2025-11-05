@@ -167,7 +167,7 @@ export default function ShopForm() {
         'Success',
         'Saved to Firestore (collection: store) with Cloudinary URLs.',
       );
-
+      navigation.navigate("Main" as never);
       // Reset UI
       setShopName('');
       setOwnerName('');

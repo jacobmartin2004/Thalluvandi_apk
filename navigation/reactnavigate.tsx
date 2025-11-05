@@ -14,6 +14,7 @@ import Addshop from '../screens/justasellerthing/addshop';
 import Openshop from '../screens/justasellerthing/openshop';
 import Addproducts from '../screens/justasellerthing/addproducts';
 import Relocate from '../screens/justasellerthing/relocate';
+import Editshop from '../utils/openshopfunctions/editshop';
 
 const Stack = createStackNavigator();
 
@@ -34,6 +35,8 @@ const ReactNavigate: React.FC = () => {
           <Stack.Screen name="Openshop" component={Openshop} />
           <Stack.Screen name="Addproducts" component={Addproducts} />
           <Stack.Screen name="Relocate" component={Relocate} />
+          <Stack.Screen name="Editshop" component={Editshop} />
+          
         </Stack.Navigator>
       </NavigationContainer>
     </>

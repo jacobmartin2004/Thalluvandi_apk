@@ -15,6 +15,7 @@ const Colors = {
   textPrimary: '#000000',
   buttonPrimary: '#031026ff',
   alert: '#DC2626',
+  placeholdercolor: '#242625',
 };
 
 export default Colors;

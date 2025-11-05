@@ -20,7 +20,7 @@ const Navbar: React.FC<Props> = ({ bgcolor = Colors.yellow, name = 'Back' }) => 
   return (
     <View style={[styles.container, { backgroundColor: bgcolor }]}>
       <TouchableOpacity style={styles.backRow} onPress={() => navigation.goBack()}>
-        <Icon name="chevron-back-outline" size={26} color="#000" />
+        <Icon name="chevron-back-outline" size={26} color="#000" style={[styles.title , {marginTop: 23 , fontSize: 26}]} />
         <Text style={styles.title}>{name}</Text>
       </TouchableOpacity>
     </View>
@@ -41,6 +41,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
+    height: '10%'
   },
   backRow: {
     flexDirection: 'row',
@@ -51,5 +52,6 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: 'bold',
     color: '#000',
+    marginTop: 20,
   },
 });
