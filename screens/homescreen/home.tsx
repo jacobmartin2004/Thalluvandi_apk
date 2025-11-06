@@ -1,15 +1,35 @@
-import React, { useEffect, useState, useCallback } from 'react';
-import { StatusBar, StyleSheet, Alert } from 'react-native';
-import Navbar from '../../component/navbar';
-import MainPage from './mainpage';
-// NOTE: fix the filename if it was misspelled: './searchbar' instead of './serachbar'
+import React, { useEffect } from 'react';
+import { StyleSheet } from 'react-native';
 import SearchBar from './serachbar';
-import Colors from '../../theme/colorpallete';
+import MainPage from './mainpage';
+
+import useCustomBackHandler from '../../handlers/backhandlers';
+import { initInterstitialAd, showInterstitialAd } from '../../ads/interstialad';
+
+const FIVE_MIN_MS = 3 * 60 * 1000;
 
 const Home: React.FC = () => {
+  useEffect(() => {
+    initInterstitialAd();
+
+    // Initial show when loaded
+    const initial = setTimeout(() => showInterstitialAd(), 2000);
+
+    // Then repeat every 3 minutes
+    const schedule = setInterval(() => {
+      showInterstitialAd();
+    }, FIVE_MIN_MS);
+
+    return () => {
+      clearTimeout(initial);
+      clearInterval(schedule);
+    };
+  }, []);
+
+  useCustomBackHandler();
+
   return (
     <>
-    
       <SearchBar placeholder="Search vendors, items..." bgcolor="#fff" />
       <MainPage />
     </>

@@ -191,6 +191,7 @@ const styles = StyleSheet.create({
   },
   textstyleinput: {
     height: 50,
+    color: 'black',
     width: '80%',
     backgroundColor: Colors.grey,
     marginBottom: 10,

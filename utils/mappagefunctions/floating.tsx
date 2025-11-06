@@ -17,8 +17,8 @@ export function Floatingbuttonaction({ismodal}: Props) {
       style={styles.floatingbutton}
       onPress={floatingbuttonaction}
     >
-      <AntDesign name="dingding" size={40} color="#000" />
-      <Text style={{ color: 'black' }}>explore</Text>
+      <AntDesign name="dingding" size={30} color="#000" />
+      <Text style={{ color: 'black' , fontSize: 10}}>explore</Text>
     </TouchableOpacity>
   );
 }

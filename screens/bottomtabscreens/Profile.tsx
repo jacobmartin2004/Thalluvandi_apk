@@ -1,295 +1,448 @@
+import React, { useEffect, useMemo, useState } from 'react';
 import {
+  Alert,
+  ActivityIndicator,
+  Image,
+  ImageBackground,
   StyleSheet,
   Text,
-  View,
-  Image,
   TouchableOpacity,
-  Alert,
+  View,
+  ScrollView,
+  StatusBar,
 } from 'react-native';
-import React, { useEffect, useState } from 'react';
 import { getAuth, onAuthStateChanged } from '@react-native-firebase/auth';
+import auth from '@react-native-firebase/auth';
 import Icon from 'react-native-vector-icons/AntDesign';
 import { useNavigation } from '@react-navigation/native';
+
 import Colors from '../../theme/colorpallete';
-import firestore from '@react-native-firebase/firestore';
-import auth from '@react-native-firebase/auth';
 import { sendResetEmail } from '../../utils/profilepagefunctions/changepassword';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import fetchstoredetails from '../../utils/fetching/fetchstoredetails';
 
 interface Userdatamain {
   name: string | null;
   email: string | null;
   photoUrl: string | null;
 }
-interface Userprofiledata {
-  email: string;
-  ownername: string;
-  phoneno: string;
-  shopname: string;
-  seller: boolean;
-}
-const Profile = () => {
-  const [loading, setLoading] = useState<boolean>(false);
-  const [userdata, setuserdata] = useState<Userdatamain | null>(null);
-  const [userdataprofile, setuserdataprofile] =
-    useState<Userprofiledata | null>(null);
-  const navigation = useNavigation();
 
-  const logout = () => {
+interface StoreProfile {
+  ownerName: string;
+  ownerPhone: string;
+  shopName: string;
+  shopstatus: boolean;
+  ownerPhotoUrl?: string | null;
+  storefrontUrl?: string | null;
+}
+
+const Fallbacks = {
+  cover:
+    'https://images.unsplash.com/photo-1503602642458-232111445657?w=1600&q=80&auto=format&fit=crop',
+  avatar:
+    'https://images.unsplash.com/photo-1544723795-3fb6469f5b39?w=600&q=80&auto=format&fit=crop',
+};
+
+const Profile = () => {
+  const navigation = useNavigation();
+  const [user, setUser] = useState<Userdatamain | null>(null);
+
+  // Your hook – assumed to return { stores: StoreProfile[] | StoreProfile | null, loading: boolean }
+  const { stores, loading } = fetchstoredetails();
+
+  // Normalize stores to an array
+  const storeProfiles: StoreProfile[] = useMemo(() => {
+    if (!stores) return [];
+    return Array.isArray(stores)
+      ? (stores as StoreProfile[])
+      : [stores as StoreProfile];
+  }, [stores]);
+
+  const primary = storeProfiles[0]; // pick first store if multiple
+
+  useEffect(() => {
+    const firebaseAuth = getAuth();
+    const unsubscribe = onAuthStateChanged(firebaseAuth, u => {
+      if (u) {
+        setUser({
+          name: u.displayName,
+          email: u.email,
+          photoUrl: u.photoURL,
+        });
+      } else {
+        setUser(null);
+      }
+    });
+    return () => unsubscribe();
+  }, []);
+
+  const handleLogout = () => {
     auth()
       .signOut()
       .then(() => {
         Alert.alert('Logged out successfully');
-        navigation.navigate('Login' as never);
+        // @ts-expect-error - typing for navigate params
+        navigation.navigate('Login');
       })
       .catch(error => Alert.alert('Error logging out', error.message));
   };
-  useEffect(() => {
-    const auth = getAuth();
-    const unsubscribe = onAuthStateChanged(auth, user => {
-      if (user) {
-        console.log('UID:', user);
-        console.log('Email:', user.email);
-        let data = {
-          name: user.displayName,
-          email: user.email,
-          photoUrl: user.photoURL,
-        };
-        setuserdata(data);
-        console.log(data);
-      } else {
-        console.log('No user is logged in');
-      }
-    });
 
-    // Cleanup the listener on unmount
-    return () => unsubscribe();
-  }, []);
-  // async function fetchmyprofile() {
-  //   const user = auth().currentUser;
-  //   if (!user) return Alert.alert('No user is logged in');
-
-  //   try {
-  //     const userdata = await firestore()
-  //       .collection('users')
-  //       .doc(user.uid)
-  //       .get();
-  //     if (userdata) {
-  //       const userDataObj = userdata.data();
-
-  //       console.log('profile data', userDataObj);
-  //       let data = {
-  //         email: userDataObj?.email,
-  //         ownername: userDataObj?.ownername,
-  //         phoneno: userDataObj?.phoneno,
-  //         shopname: userDataObj?.shopname,
-  //         seller: userDataObj?.seller,
-  //        };
-  //       setuserdataprofile(data);
-  //       if (userDataObj?.seller !== undefined) {
-  //         AsyncStorage.setItem(
-  //           'sellerstatus',
-  //           JSON.stringify(userDataObj?.seller),
-  //         );
-  //       }
-  //     } else {
-  //       console.log('No user data found in Firestore');
-  //     }
-  //   } catch (error) {
-  //     console.error('Error fetching user data:', error);
-  //   }
-  // }
-  useEffect(() => {
-    // fetchmyprofile();
-    console.log(userdataprofile);
-  }, []);
-  const changepassword = async () => {
-    await sendResetEmail(userdata?.email || '');
+  const handleChangePassword = async () => {
+    try {
+      await sendResetEmail(user?.email || '');
+      Alert.alert(
+        'Password reset email sent',
+        'Check your inbox for instructions.',
+      );
+    } catch (e: any) {
+      Alert.alert('Error', e?.message ?? 'Failed to send reset email.');
+    }
   };
-  // async function triggerReset(email: string) {
-  //   setLoading(true);
-  //   try {
-  //     // If you want the default flow, call without actionCodeSettings
-  //     await sendResetEmail(email);
-  //     Alert.alert(
-  //       'Success',
-  //       'Password reset email sent successfully. Check your inbox and spam folder.',
-  //     );
-  //   } catch (err: any) {
-  //     console.warn('sendResetEmail error', err);
-  //     const code = err?.code;
-  //     if (code === 'auth/invalid-email') {
-  //       Alert.alert('Invalid email', 'The email address is badly formatted.');
-  //     } else if (code === 'auth/user-not-found') {
-  //       Alert.alert(
-  //         'User not found',
-  //         'No account exists with that email address.',
-  //       );
-  //     } else if (code === 'auth/network-request-failed') {
-  //       Alert.alert(
-  //         'Network error',
-  //         'Please check your connection and try again.',
-  //       );
-  //     } else {
-  //       Alert.alert(
-  //         'Error',
-  //         err?.message ?? 'Failed to send password reset email.',
-  //       );
-  //     }
-  //   } finally {
-  //     setLoading(false);
-  //   }
-  //   return { changepassword, loading };
-  // }
+
+  const coverUrl = primary?.storefrontUrl || Fallbacks.cover;
+  const ownerAvatar =
+    primary?.ownerPhotoUrl || user?.photoUrl || Fallbacks.avatar;
+
+  const Title = primary?.shopName || 'Your Store';
+  const OwnerName = primary?.ownerName || user?.name || 'Owner';
+  const OwnerPhone = primary?.ownerPhone || '—';
+  const SellerLabel =
+    typeof primary?.shopstatus === 'boolean'
+      ? primary?.shopstatus
+        ? 'Yes'
+        : 'No'
+      : '—';
 
   return (
-    <View style={styles.container}>
-      <View style={styles.headerprofile}>
-        {userdata?.photoUrl ? (
-          <Image source={{ uri: userdata?.photoUrl }} style={styles.image} />
-        ) : (
-          <Icon
-            name="user"
-            size={40}
-            color={Colors.black || '#666'}
-            style={{ backgroundColor: 'white', borderRadius: 20, padding: 10 }}
-          />
-        )}
-        {userdata?.name ? (
-          <Text style={styles.text}>{userdata?.name}</Text>
-        ) : (
-          <Text style={styles.text}>{userdata?.email}</Text>
-        )}
+    <View style={styles.screen}>
+      <StatusBar barStyle="light-content" />
+      {/* Cover (storefront) */}
+      <View style={styles.coverWrap}>
+        <ImageBackground
+          source={{ uri: coverUrl }}
+          style={styles.cover}
+          imageStyle={styles.coverImage}
+          resizeMode="cover"
+        >
+          <View style={styles.coverOverlay} />
+        </ImageBackground>
+
+        {/* Floating Avatar */}
+        <View style={styles.avatarWrap}>
+          <Image source={{ uri: ownerAvatar }} style={styles.avatar} />
+        </View>
       </View>
-      <View style={styles.divider}></View>
-      {/* {userdataprofile?.seller !== undefined && (
-        <>
-          <View style={styles.profilepage}>
-            <Text style={styles.header}>Seller Details</Text>
-            <View style={{ flexDirection: 'row', width: '80%' }}>
-              <Text style={styles.sidehead}>Email:</Text>
-              <Text style={styles.sidedata}>{userdataprofile?.email}</Text>
-            </View>
-            <View style={{ flexDirection: 'row', width: '80%' }}>
-              <Text style={styles.sidehead}>Owner Name:</Text>
-              <Text style={styles.sidedata}>{userdataprofile?.ownername}</Text>
-            </View>
-            <View style={{ flexDirection: 'row', width: '80%' }}>
-              <Text style={styles.sidehead}>Phone No:</Text>
-              <Text style={styles.sidedata}>{userdataprofile?.phoneno}</Text>
-            </View>
-            <View style={{ flexDirection: 'row', width: '80%' }}>
-              <Text style={styles.sidehead}>Shop Name:</Text>
-              <Text style={styles.sidedata}>{userdataprofile?.shopname}</Text>
-            </View>
-            <View style={{ flexDirection: 'row', width: '80%' }}>
-              <Text style={styles.sidehead}>Seller:</Text>
-              <Text style={styles.sidedata}>
-                {userdataprofile?.seller ? 'Yes' : 'No'}
+
+      <ScrollView
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Header Card */}
+        <View style={styles.headerCard}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.shopTitle} numberOfLines={1}>
+              {Title}
+            </Text>
+            <Text style={styles.ownerText} numberOfLines={1}>
+              {OwnerName}
+            </Text>
+            {!!user?.email && (
+              <Text style={styles.emailText} numberOfLines={1}>
+                {user.email}
               </Text>
-            </View>
+            )}
           </View>
-          <View style={styles.divider}></View>
-        </>
-      )} */}
 
-      <View style={styles.profilepage1}>
-        <Text style={styles.header}>Other Options</Text>
+          <TouchableOpacity
+            style={styles.editBtn}
+            activeOpacity={0.8}
+            onPress={() => navigation.navigate('Editshop' as never)}
+          >
+            <Icon name="edit" size={18} color="#fff" />
+            <Text style={styles.editBtnText}>Edit</Text>
+          </TouchableOpacity>
+        </View>
 
-        <TouchableOpacity>
-          <Text style={styles.otheroptionstext}>Edit Profile</Text>
+        {/* Seller Details */}
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Seller Details</Text>
+
+          <View style={styles.row}>
+            <Text style={styles.rowLabel}>Owner Name</Text>
+            <Text style={styles.rowValue} numberOfLines={1}>
+              {OwnerName}
+            </Text>
+          </View>
+
+          <View style={styles.row}>
+            <Text style={styles.rowLabel}>Phone No</Text>
+            <Text style={styles.rowValue} numberOfLines={1}>
+              {OwnerPhone}
+            </Text>
+          </View>
+
+          <View style={styles.row}>
+            <Text style={styles.rowLabel}>Shop Name</Text>
+            <Text style={styles.rowValue} numberOfLines={1}>
+              {Title}
+            </Text>
+          </View>
+
+          <View style={styles.row}>
+            <Text style={styles.rowLabel}>Seller</Text>
+            <Text style={styles.rowValue}>{SellerLabel}</Text>
+          </View>
+
+          {loading && (
+            <View style={styles.loadingRow}>
+              <ActivityIndicator />
+              <Text style={styles.loadingText}>Loading profile…</Text>
+            </View>
+          )}
+        </View>
+
+        {/* Actions */}
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Other Options</Text>
+
+          <TouchableOpacity
+            style={styles.actionRow}
+            onPress={() => navigation.navigate('Editshop' as never)}
+          >
+            <Icon name="idcard" size={18} color={Colors?.black || '#222'} />
+            <Text style={styles.actionText}>Edit Profile</Text>
+            <Icon name="right" size={16} color="#999" style={styles.chev} />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.actionRow}
+            onPress={() =>
+              Alert.alert('Update Photo', 'Hook up your photo picker')
+            }
+          >
+            <Icon name="picture" size={18} color={Colors?.black || '#222'} />
+            <Text style={styles.actionText}>Update Photo</Text>
+            <Icon name="right" size={16} color="#999" style={styles.chev} />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.actionRow}
+            onPress={handleChangePassword}
+          >
+            <Icon name="unlock" size={18} color={Colors?.black || '#222'} />
+            <Text style={styles.actionText}>Change Password</Text>
+            <Icon name="right" size={16} color="#999" style={styles.chev} />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.actionRow, { marginBottom: 0 }]}
+            onPress={() =>
+              Alert.alert('Delete account', 'Wire this up to your flow')
+            }
+          >
+            <Icon name="delete" size={18} color={'#c1121f'} />
+            <Text style={[styles.actionText, { color: '#c1121f' }]}>
+              Delete account
+            </Text>
+            <Icon name="right" size={16} color="#c1121f" style={styles.chev} />
+          </TouchableOpacity>
+        </View>
+
+        <TouchableOpacity
+          onPress={handleLogout}
+          activeOpacity={0.9}
+          style={styles.logoutBtn}
+        >
+          <Icon name="logout" size={18} color="#fff" />
+          <Text style={styles.logoutText}>Logout</Text>
         </TouchableOpacity>
-        <TouchableOpacity>
-          <Text style={styles.otheroptionstext}>Update Photo</Text>
-        </TouchableOpacity>
-        <TouchableOpacity onPress={changepassword}>
-          <Text style={styles.otheroptionstext}>Change Password</Text>
-        </TouchableOpacity>
-        <TouchableOpacity>
-          <Text style={[styles.otheroptionstext, { color: 'red' }]}>
-            Delete account
-          </Text>
-        </TouchableOpacity>
-      </View>
-      <TouchableOpacity onPress={logout} style={styles.logout}>
-        <Icon
-          name="logout"
-          size={22}
-          color={Colors.black || '#666'}
-          style={{ marginRight: 10 }}
-        />
-        <Text style={{ fontSize: 18, fontWeight: 'bold' }}>Logout</Text>
-      </TouchableOpacity>
+
+        <View style={{ height: 32 }} />
+      </ScrollView>
     </View>
   );
 };
 
 export default Profile;
 
+const CARD_RADIUS = 16;
+
 const styles = StyleSheet.create({
-  container: {
+  screen: {
     flex: 1,
-    alignItems: 'center',
+    backgroundColor: Colors.yellow, // slate-900
   },
-  text: {
-    fontSize: 20,
+
+  /* Cover */
+  coverWrap: {
+    width: '100%',
+    height: 200,
+    backgroundColor: '#111827',
   },
-  logout: {
-    flexDirection: 'row',
-    backgroundColor: 'red',
-    padding: 10,
-    paddingLeft: 20,
-    paddingRight: 20,
-    borderRadius: 13,
+  cover: {
+    flex: 1,
+    justifyContent: 'flex-end',
+  },
+  coverImage: {
+    width: '100%',
+    height: '100%',
+  },
+  coverOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.35)',
+  },
+
+  /* Floating avatar */
+  avatarWrap: {
     position: 'absolute',
-    bottom: 100,
-    gap: 5,
+    bottom: 5, // overlaps the card below
+    left: 24,
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    overflow: 'hidden',
+    borderWidth: 3,
+    borderColor: '#0f172a',
+    backgroundColor: '#111827',
+    shadowColor: '#000',
+    shadowOpacity: 0.3,
+    shadowOffset: { width: 0, height: 6 },
+    shadowRadius: 10,
+    elevation: 10,
   },
-  image: {
-    width: 80,
-    height: 80,
-    borderRadius: 50,
+  avatar: {
+    width: '100%',
+    height: '100%',
   },
-  headerprofile: {
-    marginTop: 50,
-    alignItems: 'center',
-    gap: 30,
+
+  content: {
+    paddingTop: 64, // to accommodate the floating avatar
+    paddingHorizontal: 20,
+    paddingBottom: 12,
+  },
+
+  /* Header Card */
+  headerCard: {
     flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+    backgroundColor: '#ffffffff', // gray-800
+    padding: 16,
+    borderRadius: CARD_RADIUS,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,255,255,0.06)',
+    marginBottom: 14,
   },
-  profilepage: {
-    alignItems: 'flex-start',
-  },
-  profilepage1: {
-    alignItems: 'flex-start',
-    marginRight: '30%',
-  },
-  header: {
+  shopTitle: {
+    color: '#000000ff',
     fontSize: 22,
-    fontWeight: 'bold',
+    fontWeight: '800',
+  },
+  ownerText: {
+    color: '#000000ff',
+    fontSize: 16,
+    marginTop: 2,
+  },
+  emailText: {
+    color: '#000000ff',
+    fontSize: 13,
+    marginTop: 2,
+  },
+  editBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#2563eb',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 12,
+  },
+  editBtnText: {
+    color: '#fff',
+    fontWeight: '700',
+    fontSize: 14,
+  },
+
+  /* Cards */
+  card: {
+    backgroundColor: '#ffffffff', // gray-900
+    padding: 16,
+    borderRadius: CARD_RADIUS,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,255,255,0.06)',
+    marginBottom: 14,
+  },
+  cardTitle: {
+    color: '#000000ff',
+    fontSize: 18,
+    fontWeight: '800',
     marginBottom: 10,
   },
-  sidehead: {
-    fontSize: 18,
+
+  /* Seller details rows */
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,255,255,0.06)',
+  },
+  rowLabel: {
+    flex: 0.5,
+    color: '#000000ff',
+    fontSize: 14,
+  },
+  rowValue: {
+    flex: 0.5,
+    color: '#000000ff',
+    fontSize: 15,
     fontWeight: '600',
-    marginTop: 10,
+    textAlign: 'right',
   },
-  sidedata: {
-    fontSize: 17,
-    marginTop: 10,
-    marginLeft: 20,
-    fontWeight: '500',
+  loadingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingTop: 12,
   },
-  divider: {
-    backgroundColor: 'black',
-    height: 1,
-    width: '90%',
-    marginTop: 25,
-    marginBottom: 25,
+  loadingText: {
+    color: '#000000ff',
   },
-  otheroptionstext: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    textDecorationLine: 'underline',
-    marginTop: 15,
+
+  /* Action list */
+  actionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    gap: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,255,255,0.06)',
+  },
+  actionText: {
+    flex: 1,
+    color: '#000000ff',
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  chev: {
+    opacity: 0.6,
+  },
+
+  /* Logout button */
+  logoutBtn: {
+    marginTop: 8,
+    backgroundColor: '#ef4444',
+    borderRadius: 14,
+    paddingVertical: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 30,
+  },
+  logoutText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '800',
+    letterSpacing: 0.3,
   },
 });

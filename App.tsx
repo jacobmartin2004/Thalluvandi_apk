@@ -1,20 +1,17 @@
-import { LogBox, StatusBar, StyleSheet, Text, View } from 'react-native';
-import React from 'react';
-import Home from './screens/homescreen/home';
+import React, { useEffect, useRef, useState } from 'react';
+import { StatusBar } from 'react-native';
 import ReactNavigate from './navigation/reactnavigate';
 import Colors from './theme/colorpallete';
+import useCustomBackHandler from './handlers/backhandlers';
 
 const App: React.FC = () => {
-  LogBox.ignoreAllLogs();
+
   return (
     <>
       <StatusBar backgroundColor={Colors.yellow} barStyle="dark-content" />
       <ReactNavigate />
     </>
-   
   );
 };
 
 export default App;
-
-const styles = StyleSheet.create({});

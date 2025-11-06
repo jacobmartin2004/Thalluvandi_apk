@@ -15,10 +15,13 @@ import Openshop from '../screens/justasellerthing/openshop';
 import Addproducts from '../screens/justasellerthing/addproducts';
 import Relocate from '../screens/justasellerthing/relocate';
 import Editshop from '../utils/openshopfunctions/editshop';
+import useCustomBackHandler from '../handlers/backhandlers';
+import UseCustomBackHandler from '../handlers/backhandlers';
 
 const Stack = createStackNavigator();
 
 const ReactNavigate: React.FC = () => {
+
   return (
     <>
       <NavigationContainer>
@@ -36,6 +39,7 @@ const ReactNavigate: React.FC = () => {
           <Stack.Screen name="Addproducts" component={Addproducts} />
           <Stack.Screen name="Relocate" component={Relocate} />
           <Stack.Screen name="Editshop" component={Editshop} />
+          <Stack.Screen name="goback" component={UseCustomBackHandler as never} />
           
         </Stack.Navigator>
       </NavigationContainer>
