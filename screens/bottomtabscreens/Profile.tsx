@@ -10,15 +10,19 @@ import {
   View,
   ScrollView,
   StatusBar,
+  TextInput,
+  Modal,
+  Button,
 } from 'react-native';
 import { getAuth, onAuthStateChanged } from '@react-native-firebase/auth';
 import auth from '@react-native-firebase/auth';
 import Icon from 'react-native-vector-icons/AntDesign';
 import { useNavigation } from '@react-navigation/native';
-
+import firestore from '@react-native-firebase/firestore';
 import Colors from '../../theme/colorpallete';
 import { sendResetEmail } from '../../utils/profilepagefunctions/changepassword';
 import fetchstoredetails from '../../utils/fetching/fetchstoredetails';
+import { deleteUserAccountAndData } from '../../utils/deleting/deleteuser';
 
 interface Userdatamain {
   name: string | null;
@@ -45,7 +49,8 @@ const Fallbacks = {
 const Profile = () => {
   const navigation = useNavigation();
   const [user, setUser] = useState<Userdatamain | null>(null);
-
+  const [modalVisible, setModalVisible] = useState(false);
+  const [confirmationText, setConfirmationText] = useState('');
   // Your hook – assumed to return { stores: StoreProfile[] | StoreProfile | null, loading: boolean }
   const { stores, loading } = fetchstoredetails();
 
@@ -85,7 +90,45 @@ const Profile = () => {
       })
       .catch(error => Alert.alert('Error logging out', error.message));
   };
+     const handleConfirm = async () => {
+    if (confirmationText === 'CONFIRM') {
+      setModalVisible(false);
 
+      const currentUser = auth().currentUser;
+
+      if (!currentUser) {
+        Alert.alert(
+          'Not Logged In',
+          'You are not currently signed in. Please log in and try again.',
+          [{ text: 'OK', onPress: () => navigation.navigate('Login' as never) }]
+        );
+        return;
+      }
+
+      try {
+        await firestore().collection('store').doc(currentUser.uid).delete();
+        console.log('Firestore document deleted');
+
+        await currentUser.delete();
+        console.log('User authentication deleted');
+
+        navigation.navigate('Login' as never);
+      } catch (error: any) {
+        if (error.code === 'auth/requires-recent-login') {
+          Alert.alert(
+            'Session Expired',
+            'Your session has expired. Please log in again to delete your account.',
+            [{ text: 'OK', onPress: () => navigation.navigate('Login' as never) }]
+          );
+        } else {
+          console.error('Error deleting user or data:', error);
+          Alert.alert('Error', 'Something went wrong. Please try again later.');
+        }
+      }
+    } else {
+      Alert.alert('Please type CONFIRM in all caps to proceed.');
+    }
+  };
   const handleChangePassword = async () => {
     try {
       await sendResetEmail(user?.email || '');
@@ -213,7 +256,7 @@ const Profile = () => {
             <Icon name="right" size={16} color="#999" style={styles.chev} />
           </TouchableOpacity>
 
-          <TouchableOpacity
+          {/* <TouchableOpacity
             style={styles.actionRow}
             onPress={() =>
               Alert.alert('Update Photo', 'Hook up your photo picker')
@@ -222,7 +265,7 @@ const Profile = () => {
             <Icon name="picture" size={18} color={Colors?.black || '#222'} />
             <Text style={styles.actionText}>Update Photo</Text>
             <Icon name="right" size={16} color="#999" style={styles.chev} />
-          </TouchableOpacity>
+          </TouchableOpacity> */}
 
           <TouchableOpacity
             style={styles.actionRow}
@@ -235,8 +278,7 @@ const Profile = () => {
 
           <TouchableOpacity
             style={[styles.actionRow, { marginBottom: 0 }]}
-            onPress={() =>
-              Alert.alert('Delete account', 'Wire this up to your flow')
+            onPress={() => setModalVisible(true)
             }
           >
             <Icon name="delete" size={18} color={'#c1121f'} />
@@ -258,6 +300,29 @@ const Profile = () => {
 
         <View style={{ height: 32 }} />
       </ScrollView>
+      <View style={styles.container}>
+        <Button title="Delete Account" onPress={() => setModalVisible(true)} />
+
+        <Modal visible={modalVisible} transparent animationType="slide">
+          <View style={styles.modalBackground}>
+            <View style={styles.modalBox}>
+              <Text style={styles.title}>
+                Type CONFIRM to delete your account
+              </Text>
+              <TextInput
+                style={styles.input}
+                value={confirmationText}
+                onChangeText={setConfirmationText}
+                placeholder="CONFIRM"
+                autoCapitalize="characters"
+              />
+              <Button title="Confirm Delete" onPress={() => handleConfirm()} color={Colors.alert}/>
+              <Text> </Text>
+              <Button title="Cancel" onPress={() => setModalVisible(false)} />
+            </View>
+          </View>
+        </Modal>
+      </View>
     </View>
   );
 };
@@ -290,7 +355,30 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(0,0,0,0.35)',
   },
-
+  modalBackground: {
+    flex: 1,
+    justifyContent: 'center',
+    backgroundColor: 'rgba(0,0,0,0.5)',
+  },
+  modalBox: {
+    margin: 20,
+    padding: 10,
+    backgroundColor: '#fff',
+    borderRadius: 10,
+    elevation: 5,
+  },
+  title: {
+    fontSize: 16,
+    marginBottom: 10,
+    fontWeight: '600',
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: '#ccc',
+    padding: 10,
+    marginBottom: 15,
+    borderRadius: 5,
+  },
   /* Floating avatar */
   avatarWrap: {
     position: 'absolute',
@@ -315,7 +403,7 @@ const styles = StyleSheet.create({
   },
 
   content: {
-    paddingTop: 64, // to accommodate the floating avatar
+    paddingTop: 10, // to accommodate the floating avatar
     paddingHorizontal: 20,
     paddingBottom: 12,
   },
@@ -336,6 +424,9 @@ const styles = StyleSheet.create({
     color: '#000000ff',
     fontSize: 22,
     fontWeight: '800',
+  },
+  container: {
+    padding: 20,
   },
   ownerText: {
     color: '#000000ff',

@@ -1,15 +1,24 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { StyleSheet, Text, View, Alert, Button } from 'react-native';
 import { showRewardedAd } from '../../ads/rewardad';
-
+import Navbar from '../../component/navbar';
 
 const Offers = () => {
-
+  useEffect(() => {
+    showRewardedAd();
+  }, []);
+  setTimeout(() => {
+    showRewardedAd();
+  }, 5000);
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>🎁 Offers & Rewards</Text>
-      <Button title='play' onPress={() => {showRewardedAd()}} />
-    </View>
+    <>
+      <Navbar name="Offers" />
+
+      <View style={styles.container}>
+
+      <Text style={styles.title}>Currently There is No offers </Text>
+      </View>
+    </>
   );
 };
 

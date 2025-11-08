@@ -1,7 +1,6 @@
 import {
   ActivityIndicator,
   Alert,
-  Button,
   Image,
   Platform,
   StyleSheet,
@@ -21,44 +20,18 @@ import {
   launchImageLibrary,
 } from 'react-native-image-picker';
 import firestore from '@react-native-firebase/firestore';
-const CLOUDINARY = {
-  cloudName: 'daltvmeyl',
-  uploadPreset: 'unsigned_shop',
-};
-async function uploadToCloudinary(
-  localUri: string,
-  opts?: { folder?: string; fileName?: string; mime?: string },
-) {
-  const folder = opts?.folder;
-  const fileName = opts?.fileName ?? `image_${Date.now()}.jpg`;
-  const mime = opts?.mime ?? 'image/jpeg';
-  const uri =
-    Platform.OS === 'ios' ? localUri.replace('file://', '') : localUri;
-  const form = new FormData();
-  form.append('file', { uri, name: fileName, type: mime } as any);
-  form.append('upload_preset', CLOUDINARY.uploadPreset);
-  if (folder) form.append('folder', folder);
-  const res = await fetch(
-    `https://api.cloudinary.com/v1_1/${CLOUDINARY.cloudName}/image/upload`,
-    { method: 'POST', body: form },
-  );
 
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`Cloudinary upload failed: ${res.status} ${text}`);
-  }
+// ✅ your signed uploader must forward+sign: public_id, overwrite, invalidate, timestamp, api_key
+import { uploadToCloudinarySigned } from '../../cloudinary/uploadtocloudinary';
 
-  const json = (await res.json()) as { secure_url?: string };
-  if (!json.secure_url) throw new Error('No secure_url returned by Cloudinary');
-  return json.secure_url;
-}
 type EditableImage = {
-  url: string; // remote or local uri for preview
+  url: string;      // remote or local uri for preview
   isLocal: boolean; // true if user just picked (needs upload)
   mime?: string;
 };
 
 const emptyImg: EditableImage = { url: '', isLocal: false };
+
 const Editshop = () => {
   const currentUser = auth().currentUser;
 
@@ -66,22 +39,28 @@ const Editshop = () => {
   const [ownerName, setOwnerName] = useState<string>('');
   const [contactNumber, setContactNumber] = useState<string>('');
   const [address, setAddress] = useState<string>('');
+
   const [ownerPhoto, setOwnerPhoto] = useState<EditableImage>(emptyImg);
   const [storefront, setStorefront] = useState<EditableImage>(emptyImg);
+
   const [saving, setSaving] = useState(false);
   const { stores, loading } = fetchstoredetails();
-  console.log('Fetching Store details from functions ', stores);
   const nav = useNavigation();
+
   useEffect(() => {
     if (stores && stores.length > 0) {
-      setShopName(stores[0].shopName || '');
-      setOwnerName(stores[0].ownerName || '');
-      setContactNumber(stores[0].ownerPhone || '');
-      setAddress(stores[0].shopAddress || '');
-      setOwnerPhoto({ url: stores[0].ownerPhotoUrl || '', isLocal: false });
-      setStorefront({ url: stores[0].storefrontUrl || '', isLocal: false });
+      const s: any = stores[0];
+
+      setShopName(s.shopName || '');
+      setOwnerName(s.ownerName || '');
+      setContactNumber(s.ownerPhone || '');
+      setAddress(s.shopAddress || '');
+
+      setOwnerPhoto({ url: s.ownerPhotoUrl || '', isLocal: false });
+      setStorefront({ url: s.storefrontUrl || '', isLocal: false });
     }
   }, [stores]);
+
   const pickImage = async (setter: (img: EditableImage) => void) => {
     const opts: ImageLibraryOptions = {
       mediaType: 'photo',
@@ -99,20 +78,37 @@ const Editshop = () => {
     if (!asset?.uri) return;
 
     setter({
-      url: asset.uri,
+      url: Platform.OS === 'ios' ? asset.uri.replace('file://', '') : asset.uri,
       isLocal: true,
       mime: asset.type || 'image/jpeg',
     });
   };
+
   const canSave = useMemo(() => {
     return !!stores && !!shopName?.trim() && !!ownerName?.trim();
   }, [stores, shopName, ownerName]);
+
+  /** Upload to a FIXED public_id with overwrite+invalidate, return fresh secure_url */
+  const uploadFixed = async (
+    localUri: string,
+    publicId: string,
+    mime?: string,
+  ): Promise<string> => {
+    const secureUrl = await uploadToCloudinarySigned(localUri, {
+      public_id: publicId,
+      overwrite: true,
+      invalidate: true,
+      mime,
+    } as any);
+    return secureUrl; // should include a new version (v########)
+  };
+
   const onSave = async () => {
     if (!currentUser) {
       Alert.alert('Not signed in', 'Please sign in to update shop details.');
       return;
     }
-    if (!stores) {
+    if (!stores || stores.length === 0) {
       Alert.alert('No store', 'No store found to update.');
       return;
     }
@@ -123,24 +119,21 @@ const Editshop = () => {
 
     try {
       setSaving(true);
+      const storeId = (stores[0] as any).id;
 
-      // Upload only images that were changed locally
-      const folder = `shops/${currentUser.uid}/${stores[0].id}`;
+      // Use consistent fixed IDs so we always overwrite the same asset
+      const ownerFixedId = `shops/${currentUser.uid}/${storeId}/owner`;
+      const storefrontFixedId = `shops/${currentUser.uid}/${storeId}/storefront`;
 
-      let ownerPhotoUrl = ownerPhoto.url;
-      let storefrontUrl = storefront.url;
+      let nextOwnerUrl = ownerPhoto.url;
+      let nextStorefrontUrl = storefront.url;
 
-      // parallel uploads for changed images
       const uploads: Promise<void>[] = [];
 
       if (ownerPhoto.isLocal && ownerPhoto.url) {
         uploads.push(
           (async () => {
-            ownerPhotoUrl = await uploadToCloudinary(ownerPhoto.url, {
-              folder,
-              fileName: `owner_${Date.now()}.jpg`,
-              mime: ownerPhoto.mime,
-            });
+            nextOwnerUrl = await uploadFixed(ownerPhoto.url, ownerFixedId, ownerPhoto.mime);
           })(),
         );
       }
@@ -148,11 +141,7 @@ const Editshop = () => {
       if (storefront.isLocal && storefront.url) {
         uploads.push(
           (async () => {
-            storefrontUrl = await uploadToCloudinary(storefront.url, {
-              folder,
-              fileName: `storefront_${Date.now()}.jpg`,
-              mime: storefront.mime,
-            });
+            nextStorefrontUrl = await uploadFixed(storefront.url, storefrontFixedId, storefront.mime);
           })(),
         );
       }
@@ -161,23 +150,24 @@ const Editshop = () => {
         await Promise.all(uploads);
       }
 
-      // Update Firestore doc
-      await firestore()
-        .collection('store')
-        .doc(stores[0].id)
-        .update({
-          shopName: shopName.trim(),
-          ownerName: ownerName.trim(),
-          ownerPhone: contactNumber.trim(),
-          shopAddress: address.trim(),
-          ownerPhotoUrl: ownerPhotoUrl || firestore.FieldValue.delete(),
-          storefrontUrl: storefrontUrl || firestore.FieldValue.delete(),
-          updatedAt: firestore.FieldValue.serverTimestamp(),
-        });
+      await firestore().collection('store').doc(storeId).update({
+        shopName: shopName.trim(),
+        ownerName: ownerName.trim(),
+        ownerPhone: contactNumber.trim(),
+        shopAddress: address.trim(),
 
-      // reflect latest URLs in UI and mark as not-local
-      setOwnerPhoto({ url: ownerPhotoUrl, isLocal: false });
-      setStorefront({ url: storefrontUrl, isLocal: false });
+        ownerPhotoUrl: nextOwnerUrl || firestore.FieldValue.delete(),
+        storefrontUrl: nextStorefrontUrl || firestore.FieldValue.delete(),
+
+        // Optional: persist fixed IDs for future reference
+        ownerPhotoPublicId: ownerFixedId,
+        storefrontPublicId: storefrontFixedId,
+
+        updatedAt: firestore.FieldValue.serverTimestamp(),
+      });
+
+      setOwnerPhoto({ url: nextOwnerUrl, isLocal: false });
+      setStorefront({ url: nextStorefrontUrl, isLocal: false });
 
       Alert.alert('Success', 'Shop details updated.');
     } catch (e: any) {
@@ -201,7 +191,7 @@ const Editshop = () => {
   return (
     <>
       <Navbar name="Edit Shop" />
-      <ScrollView contentContainerStyle={styles.container}>
+    <ScrollView contentContainerStyle={styles.container}>
         <Text style={styles.title}>Edit Shop Details</Text>
 
         <TextInput
@@ -288,7 +278,7 @@ const Editshop = () => {
         {saving && (
           <View style={styles.savingRow}>
             <ActivityIndicator color={Colors.yellow} />
-            <Text style={styles.savingText}>Uploading & saving…</Text>
+            <Text style={styles.savingText}>Uploading…</Text>
           </View>
         )}
       </ScrollView>
@@ -311,6 +301,10 @@ const Editshop = () => {
 };
 
 export default Editshop;
+
+// ------------------------------------
+// Styles
+// ------------------------------------
 const styles = StyleSheet.create({
   loaderContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   container: { padding: 16, backgroundColor: Colors.background },
@@ -329,7 +323,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: Colors.black,
   },
-
   label: { color: Colors.black, marginBottom: 8, fontWeight: '600' },
   imageRow: { flexDirection: 'row', gap: 16 },
   imageCol: { flex: 1 },
@@ -341,7 +334,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   placeholderText: { color: '#6b7280' },
-
   pickBtn: {
     marginTop: 10,
     paddingVertical: 10,
@@ -350,7 +342,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   pickBtnText: { fontWeight: '700', color: '#111' },
-
   savingRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -358,7 +349,6 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   savingText: { color: Colors.black },
-
   footer: {
     justifyContent: 'center',
     alignItems: 'center',

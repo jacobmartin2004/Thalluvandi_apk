@@ -1,12 +1,24 @@
 import React from 'react';
-import { TouchableOpacity, StyleSheet, View } from 'react-native';
+import {
+  TouchableOpacity,
+  StyleSheet,
+  View,
+  ActivityIndicator,
+} from 'react-native';
 import AntDesign from 'react-native-vector-icons/AntDesign';
 
+interface Prop {
+  load: boolean | null;
+}
 
-export function Relocationbutton() {
+export function Relocationbutton({ load }: Prop) {
   return (
     <View style={styles.floatingbutton}>
-      <AntDesign name="enviromento" size={30} color="#000" />
+      {load ? (
+        <ActivityIndicator />
+      ) : (
+        <AntDesign name="enviromento" size={30} color="#000" />
+      )}
     </View>
   );
 }

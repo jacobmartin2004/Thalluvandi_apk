@@ -1,17 +1,17 @@
-import React, { useEffect, useState } from "react";
-import { View, ActivityIndicator, StyleSheet } from "react-native";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import ExplanationContent from "../explanationcontent/explanationcontent";
-import type { NativeStackScreenProps } from "@react-navigation/native-stack";
+import React, { useEffect, useState } from 'react';
+import { View, ActivityIndicator, StyleSheet } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import ExplanationContent from '../explanationcontent/explanationcontent';
+import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 type RootStackParamList = {
   InitialPage: undefined;
-  Login: undefined;
+  Splash: undefined;
 };
 
-const ONBOARDING_KEY = "onboardingDoneV1";
+const ONBOARDING_KEY = 'onboardingDoneV1';
 
-type Props = NativeStackScreenProps<RootStackParamList, "InitialPage">;
+type Props = NativeStackScreenProps<RootStackParamList, 'InitialPage'>;
 
 const InitialPage: React.FC<Props> = ({ navigation }) => {
   const [loading, setLoading] = useState(true);
@@ -21,11 +21,9 @@ const InitialPage: React.FC<Props> = ({ navigation }) => {
     (async () => {
       const done = await AsyncStorage.getItem(ONBOARDING_KEY);
       if (done) {
-         navigation.replace("Login");
-        
-        
+        navigation.navigate("Splash");
       } else {
-       setShouldShowOnboarding(true);
+        setShouldShowOnboarding(true);
       }
       setLoading(false);
     })();
@@ -39,12 +37,16 @@ const InitialPage: React.FC<Props> = ({ navigation }) => {
     );
   }
 
-  return <View style={styles.container}>{shouldShowOnboarding ? <ExplanationContent /> : null}</View>;
+  return (
+    <View style={styles.container}>
+      {shouldShowOnboarding ? <ExplanationContent /> : null}
+    </View>
+  );
 };
 
 export default InitialPage;
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  loading: { flex: 1, justifyContent: "center", alignItems: "center" },
+  loading: { flex: 1, justifyContent: 'center', alignItems: 'center' },
 });

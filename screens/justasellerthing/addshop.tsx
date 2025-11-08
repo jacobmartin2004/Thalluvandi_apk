@@ -1,4 +1,3 @@
-// ShopForm.tsx
 import React, { useEffect, useState } from 'react';
 import {
   View,
@@ -24,51 +23,15 @@ import Navbar from '../../component/navbar';
 import Colors from '../../theme/colorpallete';
 import { useNavigation } from '@react-navigation/native';
 
-const CLOUDINARY = {
-  cloudName: 'daltvmeyl',
-  uploadPreset: 'unsigned_shop',
-};
-
-/** Upload a local file URI to Cloudinary (unsigned) and return secure_url */
-async function uploadToCloudinary(
-  localUri: string,
-  opts?: { folder?: string; fileName?: string; mime?: string },
-) {
-  const folder = opts?.folder;
-  const fileName = opts?.fileName ?? `image_${Date.now()}.jpg`;
-  const mime = opts?.mime ?? 'image/jpeg';
-
-  // iOS needs file:// stripped
-  const uri =
-    Platform.OS === 'ios' ? localUri.replace('file://', '') : localUri;
-
-  const form = new FormData();
-  form.append('file', { uri, name: fileName, type: mime } as any);
-  form.append('upload_preset', CLOUDINARY.uploadPreset);
-  if (folder) form.append('folder', folder);
-
-  const res = await fetch(
-    `https://api.cloudinary.com/v1_1/${CLOUDINARY.cloudName}/image/upload`,
-    { method: 'POST', body: form },
-  );
-
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`Cloudinary upload failed: ${res.status} ${text}`);
-  }
-
-  const json = (await res.json()) as { secure_url?: string };
-  if (!json.secure_url) throw new Error('No secure_url returned by Cloudinary');
-  return json.secure_url;
-}
+// ✅ import your signed Cloudinary function
+import { uploadToCloudinarySigned } from '../../cloudinary/uploadtocloudinary';
 
 type Img = { uri: string } | null;
 
 export default function ShopForm() {
-  const currentUserauth = auth().currentUser;
   const navigation = useNavigation();
   const [shopName, setShopName] = useState('');
-  const [isshop , setisshop] = useState<boolean>(false);
+  const [isshop, setisshop] = useState<boolean>(false);
   const [ownerName, setOwnerName] = useState('');
   const [ownerPhone, setOwnerPhone] = useState('');
   const [shopAddress, setShopAddress] = useState('');
@@ -96,7 +59,7 @@ export default function ShopForm() {
   const libOpts: ImageLibraryOptions = {
     mediaType: 'photo',
     selectionLimit: 1,
-    quality: 0.8 as ImageLibraryOptions['quality'], // compress; fixes TS union issue
+    quality: 0.8 as ImageLibraryOptions['quality'],
     maxWidth: 1280,
     maxHeight: 1280,
     includeExtra: true,
@@ -112,7 +75,6 @@ export default function ShopForm() {
     const res = await launchImageLibrary(libOpts);
     if (!res.didCancel && !res.errorCode) setter(extract(res.assets));
   };
-  const currentUser = auth().currentUser;
 
   const onSubmit = async () => {
     try {
@@ -137,15 +99,16 @@ export default function ShopForm() {
 
       // Upload both images to Cloudinary (parallel)
       const [ownerPhotoUrl, storefrontUrl] = await Promise.all([
-        uploadToCloudinary(ownerPhoto.uri, {
+        uploadToCloudinarySigned(ownerPhoto.uri!, {
           folder,
           fileName: `owner_${Date.now()}.jpg`,
         }),
-        uploadToCloudinary(storefrontImage.uri, {
+        uploadToCloudinarySigned(storefrontImage.uri!, {
           folder,
           fileName: `storefront_${Date.now()}.jpg`,
         }),
       ]);
+
       const currentUser = auth().currentUser;
 
       const payload = {
@@ -167,7 +130,8 @@ export default function ShopForm() {
         'Success',
         'Saved to Firestore (collection: store) with Cloudinary URLs.',
       );
-      navigation.navigate("Main" as never);
+      navigation.navigate('Main' as never);
+
       // Reset UI
       setShopName('');
       setOwnerName('');
@@ -182,6 +146,7 @@ export default function ShopForm() {
       setSubmitting(false);
     }
   };
+
   const checkShopExists = async () => {
     console.log('checking user');
 
@@ -207,23 +172,24 @@ export default function ShopForm() {
           [
             {
               text: 'OK',
-              onPress: () => navigation.navigate('Main' as never), // Replace 'Home' with your actual route name
+              onPress: () => navigation.navigate('Main' as never),
             },
           ],
           { cancelable: false },
         );
       } else {
         console.log('No store present');
-        console.log(querySnapshot);
       }
     } catch (error) {
       console.error('Error checking shop:', error);
       return 'Error occurred';
     }
   };
+
   useEffect(() => {
     checkShopExists();
   }, []);
+
   return (
     <>
       <Navbar name="Add shop" />
@@ -294,22 +260,15 @@ export default function ShopForm() {
               alignItems: 'center',
               marginTop: 8,
             }}
-            
           >
             {submitting ? (
               <ActivityIndicator color="white" />
             ) : (
-              <Text style={{ color: 'white', fontWeight: '700', fontSize: 16 }} >
-                {isshop ? "Already Registered" : "Register"}
+              <Text style={{ color: 'white', fontWeight: '700', fontSize: 16 }}>
+                {isshop ? 'Already Registered' : 'Register'}
               </Text>
             )}
           </TouchableOpacity>
-
-          {/* <Text style={{ color: '#64748b', fontSize: 12, marginTop: 8 }}>
-          Collection: <Text style={{ fontWeight: '700' }}>"store"</Text> •
-          Images: Cloudinary (unsigned) • Compression: quality 0.8, max
-          1280×1280.
-        </Text> */}
         </ScrollView>
       </KeyboardAvoidingView>
     </>
@@ -377,10 +336,7 @@ function ImageRow({ image, onPick }: { image?: string; onPick: () => void }) {
         }}
       >
         {image ? (
-          <Image
-            source={{ uri: image }}
-            style={{ width: '100%', height: '100%' }}
-          />
+          <Image source={{ uri: image }} style={{ width: '100%', height: '100%' }} />
         ) : (
           <Text
             style={{

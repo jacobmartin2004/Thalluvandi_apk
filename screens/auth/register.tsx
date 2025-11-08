@@ -110,6 +110,7 @@ const Register: React.FC = () => {
                     fontWeight: 'bold',
                     marginBottom: 25,
                     marginTop: 20,
+                    color: Colors.black,
                   }}
                 >
                   Create a New Account
@@ -126,6 +127,7 @@ const Register: React.FC = () => {
                     onFocus={() => setisfocusin5(true)}
                     onBlur={() => setisfocusin5(false)}
                     onChangeText={text => setsellername(text)}
+                    placeholderTextColor={Colors.black}
                   />
                 ) : null}
                 <TextInput
@@ -136,10 +138,12 @@ const Register: React.FC = () => {
                     isfocusin1
                       ? { elevation: 10, backgroundColor: '#ffffff' }
                       : { elevation: 2 },
+                      
                   ]}
                   onFocus={() => setisfocusin1(true)}
                   onBlur={() => setisfocusin1(false)}
                   onChangeText={text => setemail(text)}
+                  placeholderTextColor={Colors.black}
                 />
                 {isenable ? (
                   <TextInput
@@ -154,6 +158,7 @@ const Register: React.FC = () => {
                     onFocus={() => setisfocusin3(true)}
                     onBlur={() => setisfocusin3(false)}
                     onChangeText={text => setphoneno(text)}
+                    placeholderTextColor={Colors.black}
                   />
                 ) : null}
                 {isenable ? (
@@ -182,6 +187,7 @@ const Register: React.FC = () => {
                   onFocus={() => setisfocusin2(true)}
                   onBlur={() => setisfocusin2(false)}
                   onChangeText={text => setpassword(text)}
+                  placeholderTextColor={Colors.black}
                 />
                 <TextInput
                   placeholder="Confirm Password"
@@ -195,6 +201,7 @@ const Register: React.FC = () => {
                   onFocus={() => setisfocusin2(true)}
                   onBlur={() => setisfocusin2(false)}
                   onChangeText={text => setconpassword(text)}
+                  placeholderTextColor={Colors.black}
                 />
                 {/* <View style={{ flexDirection: 'row' }}>
                   <Text style={{ fontWeight: 'bold', marginRight: 10 }}>
@@ -277,6 +284,7 @@ const styles = StyleSheet.create({
     paddingLeft: 10,
     elevation: 2,
     borderBlockColor: Colors.black,
+    color: Colors.black,
   },
   button: {
     backgroundColor: Colors.buttonPrimary,

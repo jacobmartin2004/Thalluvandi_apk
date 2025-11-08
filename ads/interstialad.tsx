@@ -1,3 +1,4 @@
+import React, { useEffect } from 'react';
 import {
   MobileAds,
   InterstitialAd,
@@ -11,6 +12,7 @@ const AD_UNIT_ID = __DEV__
 
 let interstitialRef: InterstitialAd | null = null;
 let loaded = false;
+let reloadInterval: ReturnType<typeof setInterval> | null = null;
 
 /** Initialize and set listeners for interstitial ads */
 export const initInterstitialAd = () => {
@@ -41,10 +43,18 @@ export const initInterstitialAd = () => {
   interstitialRef.addAdEventListener(AdEventType.ERROR, error => {
     console.log('[Ads] Interstitial Error:', error);
     loaded = false;
-    setTimeout(() => interstitialRef?.load(), 5000);
+    setTimeout(() => interstitialRef?.load(), 10000);
   });
 
   interstitialRef.load();
+
+  // Reload ad every 5 minutes
+  if (!reloadInterval) {
+    reloadInterval = setInterval(() => {
+      console.log('[Ads] Auto-reloading interstitial ad...');
+      interstitialRef?.load();
+    }, 5 * 60 * 1000); // 5 minutes
+  }
 };
 
 /** Show interstitial ad immediately if ready, else load and retry */
@@ -67,4 +77,24 @@ export const showInterstitialAd = () => {
     console.log('[Ads] Not ready — loading new ad');
     interstitialRef.load();
   }
+};
+
+/** Cleanup when not needed (e.g., on unmount or exit) */
+export const destroyInterstitialAd = () => {
+  if (reloadInterval) {
+    clearInterval(reloadInterval);
+    reloadInterval = null;
+  }
+  interstitialRef = null;
+  loaded = false;
+};
+
+/** Example React hook to initialize on mount */
+export const useInterstitialAd = () => {
+  useEffect(() => {
+    initInterstitialAd();
+    return () => {
+      destroyInterstitialAd();
+    };
+  }, []);
 };
